@@ -1,94 +1,85 @@
-from scipy.optimize import minimize
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import numpy as np
-from random import gauss
-from colin import colin
-import fiducials
+from scipy.optimize import minimize
+from utils import *
+
+
+def loss(params, xyz, uv):
+    """
+    Define the loss.
+    """
+
+    # -- unpack params
+    omega, phi, kappa, xs, ys, zs, ff = params
+
+    # -- set limits
+    if (omega < 0.0) or (omega >= 2.0 * np.pi):
+        return 1e9 + omega**4
+    elif (phi < -0.5 * np.pi) or (phi >= 0.5 * np.pi):
+        return 1e9 + phi**4
+    elif (kappa < 0.0) or (kappa >= 2.0 * np.pi):
+        return 1e9 + kappa**4
+    elif zs < 0.0:
+        return 1e9 + zs**4
+    elif ff < 0.0:
+        return 1e9 + ff**4
+    elif xs > 1.0e10:
+        return 1e9 + xs**4
+    elif ys > 1.0e10:
+        return 1e9 + ys**4
+
+    return ((colin(params, xyz.astype(float)) - uv)**2).sum()
 
 
 
-def fullfunc(params,xyz_s,xy_t):
+def optimize_camera(guess, xyz, uv, imsize, niter=100, method="Powell", 
+                    ftol=1e-6, verbose=False):
+    """
+    Optimize the camera parameters.
+    """
 
-	''' Find the sum of squares difference '''
-	omega, phi, kappa, xs, ys, zs, f = params
+    # -- utilities
+    params = guess.copy()
+    score  = 1e10
 
-#	if (omega<0.0) or (omega>=2.0*np.pi):
-	if (omega<0.0) or (omega>=2.0*np.pi):
-		return 1e9+omega**4
-	elif (phi<-0.5*np.pi) or (phi>=0.5*np.pi):
-		return 1e9+phi**4
-	elif (kappa<0.0) or (kappa>=2.0*np.pi):
-		return 1e9+kappa**4
-	elif zs<0.0:
-		return 1e9+zs**4
-	elif f<0.0:
-		return 1e9+f**4
-	elif (np.abs(params[3] - 977119)>1000) or \
-		    (np.abs(params[4] - 210445)>1000):
-		return 1e9 + xs**2
+    # -- center image coordinates
+    # GGD: POTENTIAL FOR PROBLEM HERE!!!
+    cuv = uv * np.array([-1, 1]) + \
+        np.array([0.5 * imsize[0], -0.5 * imsize[1]])
 
-#	params[3] = 977119.
-#	params[4] = 210445.
+    # -- minimize loss
+    for ii in range(niter):
+        res = minimize(loss, params, args=(xyz, cuv), method=method, 
+                       options={"ftol":ftol})
+        if res.fun < score:
+            score  = res.fun
+            params = res.x
+            if verbose:
+                print("params, score : {0}, {1}".format(params, score))
 
-#	colin_xy = -1.0*colin(params,xyz_s.astype(float))
-	colin_xy = 1.0*colin(params,xyz_s.astype(float))
-	diff = ((colin_xy - xy_t)**2).sum()
-
-	return diff
+    return params, score
 
 
+if __name__ == "__main__":
 
-def random_start(params):
+    # -- make a guess for the camera parameters
+    lat    = 40.689872
+    lon    = -73.988305
+    xx, yy = latlon_to_ny(lat, lon)
+    zz     = 400.
+    kappa  = 0.5 * np.pi
+    phi    = 0.0
+    omega  = 0.0
+    ff     = 800.
+    guess  = np.array([kappa, phi, omega, xx, yy, zz, ff])
 
-	''' Perturbs camera position in a gaussian fashion '''
-	return params
-#	return params + np.array([gauss(0, 0.1), gauss(0, 0.1), \
-##	gauss(0, 0.1),gauss(0, 20000),gauss(0, 20000), \
-#	gauss(0, 0.1),gauss(0, 100),gauss(0, 100), \
-#	gauss(0, 100), gauss(0, 30)])
-##	gauss(0, 10), gauss(0, 2000)])
+    # -- get the fiducials and set the image size
+    xyz, uv = get_fiducials("day_ref.csv")
+    imsize  = 2120, 4056
 
+    # -- solve for the best fit solution
+    params, score = optimize_camera(guess, xyz, uv, imsize)
 
-
-def call(params,xyz_s,xy_t):
-
-	''' Guess parameters near start and brute-force minimize '''
-	start = random_start(params)
-#	print ("start, xyz_s, xy_t",start,xyz_s,xy_t)
-	res = minimize(fullfunc, start,args=(xyz_s,xy_t), \
-#		method = 'Powell', \
-#		options={'ftol':1e-6})
-		method = 'Nelder-Mead', \
-		options={'maxfev': 10000, 'maxiter': 10000})
-
-	return res
-
-
-
-def run(imname, num_iter, params=None):
-
-	''' Run the optimization routine for the given image '''
-
-	if params == None:
-		print "Choosing 1MT UO as initial guess\n"
-		params = np.array([1.56926535e+00, -1.20789690e-01,\
-			-3.05255789e-03, 9.87920425e+05, 1.91912958e+05, \
-			3.85333237e+02, -1.10001068e+04]) 
-
-	xyz_s = fiducials.lidar_fiducials(imname)
-	xy_t = fiducials.image_fiducials(imname,center=True)
-
-	min_score = 100000000000000
-
-	for i in range(0, num_iter):
-		result = call(params,xyz_s,xy_t)
-		print "params, score", result.x, result.fun
-#		print('doing it {0} {1}'.format(i,result.fun))
-#		import pdb; pdb.set_trace()
-		if (result.fun < min_score):# and (result.x[3] < 980491):
-			min_score = result.fun
-			params = result.x
-
-	return [min_score, params]
-
-
-
+    print params, score

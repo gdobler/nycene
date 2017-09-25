@@ -45,7 +45,6 @@ def optimize_camera(guess, xyz, uv, imsize, niter=100, method="Powell",
     score  = 1e10
 
     # -- center image coordinates
-    # GGD: POTENTIAL FOR PROBLEM HERE!!!
     cuv = uv * np.array([-1, 1]) + \
         np.array([0.5 * imsize[0], -0.5 * imsize[1]])
 

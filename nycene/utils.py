@@ -39,7 +39,6 @@ def colin(params, xyz):
     c3 =  cp * co
 
     # -- project to image plane
-    # GGD: POTENTIAL FOR PROBLEM HERE!!!
     unum  = a1 * (xyz[:,0] - xs) + b1 * (xyz[:,1] - ys) + c1 * (xyz[:,2] - zs)
     vnum  = a2 * (xyz[:,0] - xs) + b2 * (xyz[:,1] - ys) + c2 * (xyz[:,2] - zs)
     denom = a3 * (xyz[:,0] - xs) + b3 * (xyz[:,1] - ys) + c3 * (xyz[:,2] - zs)
@@ -75,6 +74,8 @@ def latlon_to_ny(lat, lon):
     result = proj(lon, lat)
 
     return result
+
+
 
 def ny_to_latlon(ny_lat, ny_lon):
     """ NYS to lat/lon """

@@ -5,36 +5,54 @@ import sys
 import geopandas as gp
 from shapely.geometry import Point
 
-# -- load the x/y grid
-xgrid = np.load('../output/lwir_xgrid.npy')
-ygrid = np.load('../output/lwir_ygrid.npy')
 
-# -- read in the mappluto data
-print "reading data and extracting x,y of lot centroids"
-mn = gp.GeoDataFrame.from_file('../../data/mappluto/Manhattan/MNMapPLUTO.shp')
-mn_cenx = np.array([i.x for i in mn['geometry'].centroid])
-mn_ceny = np.array([i.y for i in mn['geometry'].centroid])
-mn_geo  = np.array(mn['geometry'])
-mn_bbl  = np.array(mn['BBL'])
+def match_bbl(ximg, yimg, mappluto):
+    """
+    ADD DOCS!!!
 
-# -- initialize bbl grid
-bblgrid = np.zeros(xgrid.shape)
+    xgrid : an "image" of x coordinates in NYS
+    ygrid : an "image" of y coordinates in NYS
+    mappluto : the location of the mappluto shape file to use or geodataframe
+    """
 
-# -- loop through pixels
-rad2 = 500.**2
-nrow, ncol = xgrid.shape
-for ii in range(nrow):
-    print "row {0} of {1}\r".format(ii+1,nrow),
-    sys.stdout.flush()
-    for jj in range(ncol):
-        xpos = xgrid[ii,jj]
-        ypos = ygrid[ii,jj]
-        pnt  = Point(xpos,ypos)
-        ind  = ((mn_cenx-xpos)**2+(mn_ceny-ypos)**2)<rad2
-        for geo,bbl in zip(mn_geo[ind],mn_bbl[ind]):
-            if geo.contains(pnt):
-                bblgrid[ii,jj] = bbl
-                continue
+    # -- read the mappluto data
+    if type(mappluto) == str:
+        print("reading MapPLUTO data...")
+        mp = gp.read_file(mappluto)
+    else:
+        mp = mappluto
 
-# -- write to file
-np.save('../output/lwir_bblgrid.npy',bblgrid)
+    # -- extract centroids, geometries, and BBLs
+    mp_cenx = np.array([i.x for i in mp['geometry'].centroid])
+    mp_ceny = np.array([i.y for i in mp['geometry'].centroid])
+    mp_geo  = np.array(mp['geometry'])
+    mp_bbl  = np.array(mp['BBL'])
+
+
+    # print("making pnts geodataframe...")
+    # pnts   = [Point(i, j) for i, j in zip(ximg.flatten(), yimg.flatten())]
+    # dfpnts = gp.GeoDataFrame({"pix" : np.arange(ximg.size), "geometry" : pnts})
+
+    # print("performing spatial join...")
+    # return gp.sjoin(mp, dfpnts, how="inner", op="contains")
+
+    # -- initialize the BBL image
+    nr, nc = ximg.shape
+    bimg   = np.zeros((nr, nc))
+
+    # -- loop through pixels
+    rad2 = 500.**2
+    for ii in range(nr):
+        print "row {0} of {1}\r".format(ii + 1, nr),
+        sys.stdout.flush()
+        for jj in range(nc):
+            xpos = ximg[ii, jj]
+            ypos = yimg[ii, jj]
+            pnt  = Point(xpos, ypos)
+            ind  = ((mp_cenx - xpos)**2 + (mp_ceny - ypos)**2) < rad2
+            for geo, bbl in zip(mp_geo[ind], mp_bbl[ind]):
+                if geo.contains(pnt):
+                    bimg[ii, jj] = bbl
+                    continue
+
+    return bimg

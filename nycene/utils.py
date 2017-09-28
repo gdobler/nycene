@@ -84,3 +84,53 @@ def ny_to_latlon(ny_lat, ny_lon):
     result = proj(ny_lat, ny_lon, inverse=True)
 
     return result[1], result[0]
+
+
+def read_raster(rname):
+    """
+    Read in a raster grid.
+    **NOTE:** poor handling of header info at the moment...
+    Parameters
+    ----------
+    fname : str
+        The name of the raster file.
+    Returns
+    -------
+    rast : ndarray
+        The raster array.
+    hdr  : class
+        The header information in a dictionary.
+    """
+
+    # -- read header info
+    for ii, rec in enumerate(open(rname.replace(".bin", ".hdr"), "r")):
+        if ii == 0:
+            dt = rec[:-1]
+        elif "nrow" in rec:
+            nrow = int(rec.split(":")[1])
+        elif "ncol" in rec:
+            ncol = int(rec.split(":")[1])
+        elif "rmin" in rec:
+            rmin = float(rec.split(":")[1])
+        elif "rmax" in rec:
+            rmax = float(rec.split(":")[1])
+        elif "cmin" in rec:
+            cmin = float(rec.split(":")[1])
+        elif "cmax" in rec:
+            cmax = float(rec.split(":")[1])
+
+    class raster_header():
+        def __init__(self):
+            self.nrow  = nrow
+            self.ncol  = ncol
+            self.rmin  = rmin
+            self.rmax  = rmax
+            self.cmin  = cmin
+            self.cmax  = cmax
+            self.dt    = dt
+            self.rname = rname
+
+
+    # -- read in raster and reshape
+    return np.memmap(rname, dtype=float, mode="r").reshape(nrow, ncol), \
+        raster_header()

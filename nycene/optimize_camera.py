@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 import numpy as np
 from scipy.optimize import minimize
 from utils import *
@@ -63,20 +64,42 @@ def optimize_camera(guess, xyz, uv, imsize, niter=100, method="Powell",
 
 if __name__ == "__main__":
 
-    # -- make a guess for the camera parameters
-    lat    = 40.689872
-    lon    = -73.988305
-    xx, yy = latlon_to_ny(lat, lon)
-    zz     = 400.
-    kappa  = 0.5 * np.pi
-    phi    = 0.0
-    omega  = 0.0
-    ff     = 800.
-    guess  = np.array([kappa, phi, omega, xx, yy, zz, ff])
+    # -- check inputs
+    if len(sys.argv) < 2:
+        print("\nsyntax is python optimize_camera.py <location>")
+        print("  location = 1MTC or audubon_d6\n")
+        sys.exit()
 
-    # -- get the fiducials and set the image size
-    xyz, uv = get_fiducials("day_ref.csv")
-    imsize  = 2120, 4056
+    # -- make a guess for the camera parameters
+    if sys.argv[1] == "1MTC":
+        lat    = 40.689872
+        lon    = -73.988305
+        xx, yy = latlon_to_ny(lat, lon)
+        zz     = 400.
+        kappa  = 0.5 * np.pi
+        phi    = 0.0
+        omega  = 0.0
+        ff     = 800.
+        guess  = np.array([kappa, phi, omega, xx, yy, zz, ff])
+
+        # -- get the fiducials and set the image size
+        xyz, uv = get_fiducials("day_ref.csv")
+        imsize  = 2120, 4056
+    elif sys.argv[1] == "audubon_d6":
+        lat    = 40.7556029
+        lon    = -73.98712
+        xx, yy = latlon_to_ny(lat, lon)
+        zz     = 400.
+        kappa  = 1.5 * np.pi
+        phi    = 0.0
+        omega  = 0.0
+        ff     = 800.
+        guess  = np.array([kappa, phi, omega, xx, yy, zz, ff])
+
+        # -- get the fiducials and set the image size
+        xyz, uv = get_fiducials("audubon_d6.csv")
+        imsize  = 2560, 1918
+
 
     # -- solve for the best fit solution
     params, score = optimize_camera(guess, xyz, uv, imsize)

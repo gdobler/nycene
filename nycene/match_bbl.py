@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import numpy as np
 import geopandas as gp
 from shapely.geometry import Point
 
@@ -27,14 +28,6 @@ def match_bbl(ximg, yimg, mappluto):
     mp_ceny = np.array([i.y for i in mp['geometry'].centroid])
     mp_geo  = np.array(mp['geometry'])
     mp_bbl  = np.array(mp['BBL'])
-
-
-    # print("making pnts geodataframe...")
-    # pnts   = [Point(i, j) for i, j in zip(ximg.flatten(), yimg.flatten())]
-    # dfpnts = gp.GeoDataFrame({"pix" : np.arange(ximg.size), "geometry" : pnts})
-
-    # print("performing spatial join...")
-    # return gp.sjoin(mp, dfpnts, how="inner", op="contains")
 
     # -- initialize the BBL image
     nr, nc = ximg.shape
